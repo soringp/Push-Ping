@@ -1,12 +1,146 @@
 const http = require('http');
-const port = process.env.PORT || 3000;
+const https = require('https');
+const querystring = require('querystring');
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const config = {
+  port: process.env.PORT || 3000,
+  pushping: false,
+  userkey: null,
+  apikey: null
+};
+
+// Parse command line arguments
+for (let i = 0; i < args.length; i++) {
+  switch (args[i]) {
+    case '--pushping':
+      config.pushping = true;
+      break;
+    case '--userkey':
+      config.userkey = args[i + 1];
+      i++; // Skip next argument as it's the value
+      break;
+    case '--apikey':
+      config.apikey = args[i + 1];
+      i++; // Skip next argument as it's the value
+      break;
+    case '--port':
+      config.port = parseInt(args[i + 1]);
+      i++; // Skip next argument as it's the value
+      break;
+  }
+}
+
+// Validate pushover configuration
+if (config.pushping && (!config.userkey || !config.apikey)) {
+  console.error('Error: --pushping requires both --userkey and --apikey parameters');
+  process.exit(1);
+}
+
+// Function to send pushover notification
+function sendPushoverNotification(message, title = 'Node Hello Server') {
+  if (!config.pushping) return;
+
+  const postData = querystring.stringify({
+    token: config.apikey,
+    user: config.userkey,
+    message: message,
+    title: title
+  });
+
+  const options = {
+    hostname: 'api.pushover.net',
+    port: 443,
+    path: '/1/messages.json',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    res.on('end', () => {
+      if (res.statusCode === 200) {
+        console.log('Pushover notification sent successfully');
+      } else {
+        console.error('Failed to send pushover notification:', res.statusCode, data);
+      }
+    });
+  });
+
+  req.on('error', (error) => {
+    console.error('Error sending pushover notification:', error);
+  });
+
+  req.write(postData);
+  req.end();
+}
+
+// Request counter for notifications
+let requestCount = 0;
 
 const server = http.createServer((req, res) => {
+  requestCount++;
+  
   res.statusCode = 200;
-  const msg = 'Hello Node!\n'
+  const msg = 'Hello Node!\n';
   res.end(msg);
+  
+  // Send pushover notification for every 10th request
+  if (config.pushping && requestCount % 10 === 0) {
+    sendPushoverNotification(
+      `Server has received ${requestCount} requests. Latest request: ${req.method} ${req.url}`,
+      'Node Hello Server - Request Milestone'
+    );
+  }
 });
 
-server.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}/`);
+server.listen(config.port, () => {
+  const startMessage = `Server running on http://localhost:${config.port}/`;
+  console.log(startMessage);
+  
+  // Send pushover notification when server starts
+  if (config.pushping) {
+    sendPushoverNotification(
+      `Node Hello server started successfully on port ${config.port}`,
+      'Node Hello Server - Started'
+    );
+  }
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down server...');
+  
+  if (config.pushping) {
+    sendPushoverNotification(
+      `Node Hello server shutting down. Total requests served: ${requestCount}`,
+      'Node Hello Server - Shutdown'
+    );
+  }
+  
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  
+  if (config.pushping) {
+    sendPushoverNotification(
+      `Node Hello server encountered an error: ${error.message}`,
+      'Node Hello Server - Error'
+    );
+  }
+  
+  process.exit(1);
 });
