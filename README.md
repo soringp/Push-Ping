@@ -1,35 +1,36 @@
 # Node Hello World
 
-Simple node.js app that serves "hello world" with optional Pushover notifications
+Simple node.js app that serves "hello world" with optional Pushover notification support
 
-Great for testing simple deployments to the cloud with monitoring capabilities
+Great for testing simple deployments to the cloud or sending one-time notifications
 
 ## Features
 
-- Lightweight HTTP server
-- Configurable port
-- Optional Pushover notifications for monitoring
+- **HTTP Server Mode**: Lightweight HTTP server with configurable port
+- **Pushover Mode**: Send one notification and exit
 - Command line parameter support
-- Request counting and milestone notifications
+- Dual functionality: server or notification tool
 
 ## Run It
 
-### Basic Usage
+### HTTP Server Mode (Default)
 
 ```bash
+# Start HTTP server on port 3000
 npm start
+
+# Or with custom port
+node index.js --port 8080
 ```
 
-### With Pushover Notifications
+### Pushover Mode (Send notification and exit)
 
 ```bash
+# Send notification with default message
 node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY
-```
 
-### Custom Configuration
-
-```bash
-node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "My Server" --message "Custom notification" --port 8080
+# Send custom notification
+node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "Alert" --message "Something happened"
 ```
 
 ## Command Line Options
@@ -51,13 +52,19 @@ node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "
 3. Create an application to get an API Token
 4. Use these keys with the `--userkey` and `--apikey` parameters
 
-## Notification Events
+## Modes
 
-The server sends notifications for:
-- Server startup
-- Every 10th request (milestone notifications)
-- Server shutdown
-- Uncaught exceptions
+### HTTP Server Mode
+When run without `--pushping`, the application starts an HTTP server that:
+- Serves "Hello Node!" on all requests
+- Runs continuously until stopped
+- Listens on configurable port (default: 3000)
+
+### Pushover Mode
+When run with `--pushping`, the application:
+- Sends one notification to Pushover
+- Exits immediately after sending
+- Does not start HTTP server
 
 ## Help
 
@@ -68,15 +75,12 @@ node index.js --help
 ## Examples
 
 ```bash
-# Start server on default port 3000
-npm start
+# HTTP Server Mode
+npm start                                    # Start server on port 3000
+node index.js --port 8080                   # Start server on port 8080
 
-# Start with pushover notifications
+# Pushover Mode (sends notification and exits)
 node index.js --pushping --userkey u123abc --apikey a456def
-
-# Custom port and notifications
-node index.js --port 8080 --pushping --userkey u123abc --apikey a456def
-
-# Custom title and message
-node index.js --pushping --userkey u123abc --apikey a456def --title "Production Server" --message "Server alert"
+node index.js --pushping --userkey u123abc --apikey a456def --title "Alert" --message "Task completed"
+node index.js --pushping --userkey u123abc --apikey a456def --message "Deployment finished"
 ```

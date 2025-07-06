@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "start:pushover": "node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY",
+    "notify": "node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY",
     "help": "node index.js --help"
   },
   "repository": {

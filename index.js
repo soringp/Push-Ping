@@ -47,19 +47,27 @@ function showHelp() {
   console.log(`
 Usage: node index.js [options]
 
+Modes:
+  HTTP Server Mode (default): Runs a continuous HTTP server
+  Pushover Mode: Sends one notification and exits
+
 Options:
-  --pushping              Enable pushover notifications
+  --pushping              Enable pushover mode (sends one notification and exits)
   --userkey <key>         Pushover user key (required with --pushping)
   --apikey <key>          Pushover API key (required with --pushping)
-  --title <title>         Custom title for notifications (optional)
-  --message <message>     Custom message for notifications (optional)
-  --port <port>           Port to run server on (default: 3000)
+  --title <title>         Custom title for notification (optional)
+  --message <message>     Custom message for notification (optional)
+  --port <port>           Port to run server on (default: 3000, ignored in pushover mode)
   --help                  Show this help message
 
 Examples:
-  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY
-  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "My Server" --message "Custom notification"
+  # Run HTTP server
+  node index.js
   node index.js --port 8080
+  
+  # Send pushover notification and exit
+  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY
+  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "Alert" --message "Something happened"
 `);
 }
 
@@ -77,8 +85,11 @@ if (config.pushping && (!config.userkey || !config.apikey)) {
 }
 
 // Function to send pushover notification
-function sendPushoverNotification(message, title = null) {
-  if (!config.pushping) return;
+function sendPushoverNotification(message, title = null, callback = null) {
+  if (!config.pushping) {
+    if (callback) callback();
+    return;
+  }
 
   // Use custom message if provided, otherwise use the passed message
   const finalMessage = config.message || message;
@@ -114,76 +125,60 @@ function sendPushoverNotification(message, title = null) {
       } else {
         console.error('Failed to send pushover notification:', res.statusCode, data);
       }
+      if (callback) callback();
     });
   });
 
   req.on('error', (error) => {
     console.error('Error sending pushover notification:', error);
+    if (callback) callback();
   });
 
   req.write(postData);
   req.end();
 }
 
-// Request counter for notifications
-let requestCount = 0;
-
-const server = http.createServer((req, res) => {
-  requestCount++;
+// If pushover is enabled, just send notification and exit
+if (config.pushping) {
+  console.log('Sending pushover notification...');
   
-  res.statusCode = 200;
-  const msg = 'Hello Node!\n';
-  res.end(msg);
+  // Use custom message or default message
+  const notificationMessage = config.message || 'Node Hello application notification';
   
-  // Send pushover notification for every 10th request
-  if (config.pushping && requestCount % 10 === 0) {
-    sendPushoverNotification(
-      `Server has received ${requestCount} requests. Latest request: ${req.method} ${req.url}`,
-      'Node Hello Server - Request Milestone'
-    );
-  }
-});
-
-server.listen(config.port, () => {
-  const startMessage = `Server running on http://localhost:${config.port}/`;
-  console.log(startMessage);
-  
-  // Send pushover notification when server starts
-  if (config.pushping) {
-    sendPushoverNotification(
-      `Node Hello server started successfully on port ${config.port}`,
-      'Node Hello Server - Started'
-    );
-  }
-});
-
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nShutting down server...');
-  
-  if (config.pushping) {
-    sendPushoverNotification(
-      `Node Hello server shutting down. Total requests served: ${requestCount}`,
-      'Node Hello Server - Shutdown'
-    );
-  }
-  
-  server.close(() => {
-    console.log('Server closed');
+  sendPushoverNotification(notificationMessage, config.title, () => {
+    console.log('Notification sent. Exiting...');
     process.exit(0);
   });
-});
+} else {
+  // Run as HTTP server if pushover is not enabled
+  let requestCount = 0;
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  
-  if (config.pushping) {
-    sendPushoverNotification(
-      `Node Hello server encountered an error: ${error.message}`,
-      'Node Hello Server - Error'
-    );
-  }
-  
-  process.exit(1);
-});
+  const server = http.createServer((req, res) => {
+    requestCount++;
+    
+    res.statusCode = 200;
+    const msg = 'Hello Node!\n';
+    res.end(msg);
+  });
+
+  server.listen(config.port, () => {
+    const startMessage = `Server running on http://localhost:${config.port}/`;
+    console.log(startMessage);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\nShutting down server...');
+    
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    process.exit(1);
+  });
+}

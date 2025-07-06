@@ -2,7 +2,12 @@
 
 ## Overview
 
-This is a simple Node.js HTTP server application that serves a "Hello World" message. The application is built using Node.js's built-in `http` module and is designed for testing simple deployments to the cloud. The server now includes optional Pushover notification support for monitoring server events.
+This is a dual-purpose Node.js application that can operate in two modes:
+
+1. **HTTP Server Mode**: A simple HTTP server that serves a "Hello World" message
+2. **Pushover Mode**: A notification tool that sends one Pushover notification and exits
+
+The application is built using Node.js's built-in `http` module and is designed for testing simple deployments to the cloud or sending one-time notifications.
 
 ## Project Structure
 
@@ -145,17 +150,27 @@ All return the same "Hello Node!" response.
 - **version**: `1.0.0` - Semantic version
 - **main**: `index.js` - Entry point
 - **scripts.start**: `node index.js` - Start command
-- **scripts.start:pushover**: `node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY` - Start with pushover notifications
+- **scripts.notify**: `node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY` - Send notification
 - **scripts.help**: `node index.js --help` - Show help message
 
-## Pushover Notifications
+## Application Modes
 
-The application supports optional Pushover notifications for monitoring server events. When enabled, the server will send notifications for:
+### HTTP Server Mode (Default)
 
-- Server startup
-- Server shutdown
-- Every 10th request (milestone notifications)
-- Uncaught exceptions
+When run without the `--pushping` parameter, the application operates as a continuous HTTP server:
+
+- Serves "Hello Node!" response to all HTTP requests
+- Runs continuously until manually stopped
+- Listens on configurable port (default: 3000)
+
+### Pushover Mode
+
+When run with the `--pushping` parameter, the application operates as a one-time notification tool:
+
+- Sends a single notification to Pushover
+- Exits immediately after sending the notification
+- Does not start the HTTP server
+- Useful for scripts, cron jobs, or one-time alerts
 
 ### Command Line Parameters
 
@@ -177,43 +192,56 @@ To use Pushover notifications, you need:
 2. **User Key**: Found in your Pushover dashboard
 3. **API Token**: Create an application at https://pushover.net/apps/build
 
-### Notification Events
+### Pushover Notification Behavior
 
-#### Server Startup
-- **Trigger**: When the server starts successfully
-- **Default Title**: "Node Hello Server - Started"
-- **Default Message**: "Node Hello server started successfully on port {port}"
+When running in Pushover mode, the application:
 
-#### Request Milestones
-- **Trigger**: Every 10th request
-- **Default Title**: "Node Hello Server - Request Milestone"
-- **Default Message**: "Server has received {count} requests. Latest request: {method} {url}"
+1. **Parses command line arguments**
+2. **Validates required parameters** (userkey and apikey)
+3. **Sends one notification** with the specified or default message
+4. **Exits immediately** after notification is sent
 
-#### Server Shutdown
-- **Trigger**: When server receives SIGINT (Ctrl+C)
-- **Default Title**: "Node Hello Server - Shutdown"
-- **Default Message**: "Node Hello server shutting down. Total requests served: {count}"
+#### Default Notification
+- **Default Title**: "Node Hello Server"
+- **Default Message**: "Node Hello application notification"
 
-#### Error Notifications
-- **Trigger**: Uncaught exceptions
-- **Default Title**: "Node Hello Server - Error"
-- **Default Message**: "Node Hello server encountered an error: {error message}"
+#### Message Priority
+The notification content is determined in this order:
+1. **Custom message** (if `--message` parameter is provided)
+2. **Default message** ("Node Hello application notification")
+
+#### Title Priority
+The notification title is determined in this order:
+1. **Custom title** (if `--title` parameter is provided)
+2. **Default title** ("Node Hello Server")
 
 ### Custom Notifications
 
-When `--title` or `--message` parameters are provided:
+You can customize the notification content using command line parameters:
 
-- **Custom Title**: Overrides the default title for all notifications
-- **Custom Message**: Overrides the default message for all notifications
+- **Custom Title**: Use `--title "Your Title"` to set a custom notification title
+- **Custom Message**: Use `--message "Your Message"` to set a custom notification message
 
-**Example with custom title and message**:
+**Examples**:
 ```bash
-node index.js --pushping --userkey your_user_key --apikey your_api_key --title "Production Server" --message "Server event occurred"
+# Default notification
+node index.js --pushping --userkey your_user_key --apikey your_api_key
+
+# Custom title only
+node index.js --pushping --userkey your_user_key --apikey your_api_key --title "Production Alert"
+
+# Custom message only
+node index.js --pushping --userkey your_user_key --apikey your_api_key --message "Deployment completed successfully"
+
+# Custom title and message
+node index.js --pushping --userkey your_user_key --apikey your_api_key --title "Deploy Status" --message "Application deployed to production"
 ```
 
 ## Usage Examples
 
-### Basic Usage
+### HTTP Server Mode
+
+#### Basic HTTP Server
 
 1. **Start the server**:
 ```bash
@@ -230,22 +258,21 @@ curl http://localhost:3000/
 Hello Node!
 ```
 
-### Advanced Usage
-
 #### Custom Port
 
 ```bash
-PORT=8080 npm start
+node index.js --port 8080
 ```
 
 #### Production Deployment
 
 ```bash
-# Set production port
+# Set production port via environment variable
 export PORT=80
-
-# Start the server
 npm start
+
+# Or via command line
+node index.js --port 80
 ```
 
 #### Using with PM2
@@ -276,6 +303,57 @@ COPY . .
 EXPOSE 3000
 
 CMD ["npm", "start"]
+```
+
+### Pushover Mode
+
+#### Basic Notification
+
+```bash
+node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY
+```
+
+**Expected output**:
+```
+Sending pushover notification...
+Pushover notification sent successfully
+Notification sent. Exiting...
+```
+
+#### Custom Notifications
+
+```bash
+# Custom message
+node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --message "Build completed successfully"
+
+# Custom title
+node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "CI/CD Pipeline"
+
+# Both custom title and message
+node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "Deployment Alert" --message "Application deployed to production"
+```
+
+#### Use in Scripts
+
+```bash
+#!/bin/bash
+# deploy.sh
+
+echo "Starting deployment..."
+# ... deployment commands ...
+
+if [ $? -eq 0 ]; then
+    node index.js --pushping --userkey $PUSHOVER_USER --apikey $PUSHOVER_API --title "Deployment Success" --message "Application deployed successfully"
+else
+    node index.js --pushping --userkey $PUSHOVER_USER --apikey $PUSHOVER_API --title "Deployment Failed" --message "Deployment encountered errors"
+fi
+```
+
+#### Use in Cron Jobs
+
+```bash
+# Add to crontab for daily health check notification
+0 9 * * * /usr/bin/node /path/to/index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "Daily Health Check" --message "System is running normally"
 ```
 
 ## Error Handling
