@@ -1,0 +1,457 @@
+# Node Hello World - API Documentation
+
+## Overview
+
+This is a simple Node.js HTTP server application that serves a "Hello World" message. The application is built using Node.js's built-in `http` module and is designed for testing simple deployments to the cloud.
+
+## Project Structure
+
+```
+node-hello/
+├── index.js           # Main application entry point
+├── package.json       # Project configuration and dependencies
+├── package-lock.json  # Dependency lock file
+├── README.md          # Basic project information
+├── .gitignore         # Git ignore rules
+├── .prettierrc        # Code formatting configuration
+└── .vscode/           # VS Code configuration
+    └── settings.json  # Editor settings
+```
+
+## Public APIs and Components
+
+### 1. HTTP Server (`index.js`)
+
+The main component of the application is an HTTP server that responds to all requests with a "Hello Node!" message.
+
+#### Server Configuration
+
+```javascript
+const http = require('http');
+const port = process.env.PORT || 3000;
+```
+
+- **Port**: Configurable via `PORT` environment variable, defaults to `3000`
+- **Protocol**: HTTP (not HTTPS)
+- **Dependencies**: Node.js built-in `http` module
+
+#### Server Instance
+
+```javascript
+const server = http.createServer((req, res) => {
+  res.statusCode = 200;
+  const msg = 'Hello Node!\n'
+  res.end(msg);
+});
+```
+
+**Function Signature**: `http.createServer(requestListener)`
+
+**Parameters**:
+- `req` (http.IncomingMessage): The HTTP request object
+- `res` (http.ServerResponse): The HTTP response object
+
+**Response**:
+- **Status Code**: 200 (OK)
+- **Content-Type**: Plain text (default)
+- **Body**: "Hello Node!\n"
+
+#### Server Startup
+
+```javascript
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}/`);
+});
+```
+
+**Function Signature**: `server.listen(port, callback)`
+
+**Parameters**:
+- `port` (number): The port number to listen on
+- `callback` (function): Callback function executed when server starts
+
+## API Endpoints
+
+### GET / (Root Endpoint)
+
+**Description**: Returns a simple "Hello Node!" message
+
+**HTTP Method**: GET (responds to all HTTP methods)
+
+**URL**: `http://localhost:3000/` (or configured port)
+
+**Request Parameters**: None
+
+**Response**:
+```
+Status: 200 OK
+Content-Type: text/plain
+Body: Hello Node!
+```
+
+**Example Request**:
+```bash
+curl http://localhost:3000/
+```
+
+**Example Response**:
+```
+Hello Node!
+```
+
+### All Other Endpoints
+
+**Description**: The server responds to all paths with the same "Hello Node!" message
+
+**HTTP Method**: Any (GET, POST, PUT, DELETE, etc.)
+
+**URL**: `http://localhost:3000/*` (any path)
+
+**Response**: Same as root endpoint
+
+**Example Requests**:
+```bash
+curl http://localhost:3000/api/users
+curl -X POST http://localhost:3000/login
+curl -X PUT http://localhost:3000/data/123
+```
+
+All return the same "Hello Node!" response.
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `PORT` | Port number for the server to listen on | `3000` | No |
+
+### Package.json Configuration
+
+```json
+{
+  "name": "node-hello",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
+```
+
+**Key Properties**:
+- **name**: `node-hello` - Package name
+- **version**: `1.0.0` - Semantic version
+- **main**: `index.js` - Entry point
+- **scripts.start**: `node index.js` - Start command
+
+## Usage Examples
+
+### Basic Usage
+
+1. **Start the server**:
+```bash
+npm start
+```
+
+2. **Access the server**:
+```bash
+curl http://localhost:3000/
+```
+
+3. **Expected output**:
+```
+Hello Node!
+```
+
+### Advanced Usage
+
+#### Custom Port
+
+```bash
+PORT=8080 npm start
+```
+
+#### Production Deployment
+
+```bash
+# Set production port
+export PORT=80
+
+# Start the server
+npm start
+```
+
+#### Using with PM2
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start with PM2
+pm2 start index.js --name "node-hello"
+
+# Monitor
+pm2 monit
+```
+
+#### Docker Deployment
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+```
+
+## Error Handling
+
+The current implementation does not include explicit error handling. The server will:
+
+- Return `200 OK` for all requests
+- Not handle server errors explicitly
+- Rely on Node.js default error handling
+
+### Recommendations for Production
+
+```javascript
+// Enhanced error handling example
+const server = http.createServer((req, res) => {
+  try {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain');
+    const msg = 'Hello Node!\n';
+    res.end(msg);
+  } catch (error) {
+    console.error('Server error:', error);
+    res.statusCode = 500;
+    res.end('Internal Server Error');
+  }
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
+```
+
+## Performance Considerations
+
+### Current Implementation
+
+- **Single-threaded**: Uses Node.js event loop
+- **No caching**: Generates response for each request
+- **No compression**: Serves plain text without compression
+- **No rate limiting**: Accepts unlimited requests
+
+### Optimization Recommendations
+
+1. **Add compression**:
+```javascript
+const zlib = require('zlib');
+// Add gzip compression for responses
+```
+
+2. **Add caching headers**:
+```javascript
+res.setHeader('Cache-Control', 'public, max-age=3600');
+```
+
+3. **Add rate limiting**:
+```javascript
+// Use express-rate-limit or similar
+```
+
+## Testing
+
+### Manual Testing
+
+```bash
+# Test basic functionality
+curl http://localhost:3000/
+
+# Test different HTTP methods
+curl -X POST http://localhost:3000/
+curl -X PUT http://localhost:3000/api/test
+curl -X DELETE http://localhost:3000/users/1
+```
+
+### Load Testing
+
+```bash
+# Using curl for basic load testing
+for i in {1..100}; do curl http://localhost:3000/ & done
+
+# Using Apache Bench (ab)
+ab -n 1000 -c 10 http://localhost:3000/
+```
+
+### Integration Testing Example
+
+```javascript
+// test.js
+const http = require('http');
+const assert = require('assert');
+
+const options = {
+  hostname: 'localhost',
+  port: 3000,
+  path: '/',
+  method: 'GET'
+};
+
+const req = http.request(options, (res) => {
+  assert.strictEqual(res.statusCode, 200);
+  
+  let data = '';
+  res.on('data', (chunk) => {
+    data += chunk;
+  });
+  
+  res.on('end', () => {
+    assert.strictEqual(data, 'Hello Node!\n');
+    console.log('Test passed!');
+  });
+});
+
+req.on('error', (error) => {
+  console.error('Test failed:', error);
+});
+
+req.end();
+```
+
+## Deployment
+
+### Local Development
+
+```bash
+# Install dependencies (none in this case)
+npm install
+
+# Start development server
+npm start
+
+# Server will be available at http://localhost:3000/
+```
+
+### Production Deployment
+
+#### AWS EC2
+
+```bash
+# Transfer files to EC2 instance
+scp -r . ec2-user@your-instance:/home/ec2-user/node-hello
+
+# SSH into instance
+ssh ec2-user@your-instance
+
+# Install Node.js and start application
+sudo yum update -y
+sudo yum install -y nodejs npm
+cd node-hello
+npm start
+```
+
+#### Heroku
+
+```bash
+# Create Heroku app
+heroku create your-app-name
+
+# Deploy
+git push heroku main
+```
+
+#### Docker
+
+```bash
+# Build image
+docker build -t node-hello .
+
+# Run container
+docker run -p 3000:3000 node-hello
+```
+
+## Security Considerations
+
+### Current Security Status
+
+- **No authentication**: Open to all requests
+- **No input validation**: Accepts all requests without validation
+- **No HTTPS**: Uses HTTP only
+- **No security headers**: Missing security headers
+
+### Security Recommendations
+
+1. **Add HTTPS**:
+```javascript
+const https = require('https');
+const fs = require('fs');
+
+const options = {
+  key: fs.readFileSync('private-key.pem'),
+  cert: fs.readFileSync('certificate.pem')
+};
+
+const server = https.createServer(options, (req, res) => {
+  // ... handler code
+});
+```
+
+2. **Add security headers**:
+```javascript
+res.setHeader('X-Content-Type-Options', 'nosniff');
+res.setHeader('X-Frame-Options', 'DENY');
+res.setHeader('X-XSS-Protection', '1; mode=block');
+```
+
+3. **Add rate limiting and input validation for production use**
+
+## Contributing
+
+### Code Style
+
+The project uses Prettier for code formatting with the following configuration:
+
+```json
+{
+  "singleQuote": true,
+  "semi": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 80,
+  "bracketSpacing": true,
+  "arrowParens": "avoid"
+}
+```
+
+### Development Workflow
+
+1. Make changes to `index.js`
+2. Test locally with `npm start`
+3. Format code with `npx prettier --write .`
+4. Commit changes
+
+## License
+
+ISC License (as specified in package.json)
+
+## Support
+
+For issues and questions, please refer to the GitHub repository:
+- **Repository**: https://github.com/johnpapa/node-hello
+- **Issues**: https://github.com/johnpapa/node-hello/issues
+
+---
+
+*This documentation covers all public APIs, functions, and components of the Node Hello World application. The application is intentionally simple and serves as a foundation for more complex Node.js applications.*
