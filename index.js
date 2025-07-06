@@ -8,7 +8,9 @@ const config = {
   port: process.env.PORT || 3000,
   pushping: false,
   userkey: null,
-  apikey: null
+  apikey: null,
+  title: 'Node Hello Server',
+  message: null
 };
 
 // Parse command line arguments
@@ -25,6 +27,14 @@ for (let i = 0; i < args.length; i++) {
       config.apikey = args[i + 1];
       i++; // Skip next argument as it's the value
       break;
+    case '--title':
+      config.title = args[i + 1];
+      i++; // Skip next argument as it's the value
+      break;
+    case '--message':
+      config.message = args[i + 1];
+      i++; // Skip next argument as it's the value
+      break;
     case '--port':
       config.port = parseInt(args[i + 1]);
       i++; // Skip next argument as it's the value
@@ -32,21 +42,54 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
+// Function to show help
+function showHelp() {
+  console.log(`
+Usage: node index.js [options]
+
+Options:
+  --pushping              Enable pushover notifications
+  --userkey <key>         Pushover user key (required with --pushping)
+  --apikey <key>          Pushover API key (required with --pushping)
+  --title <title>         Custom title for notifications (optional)
+  --message <message>     Custom message for notifications (optional)
+  --port <port>           Port to run server on (default: 3000)
+  --help                  Show this help message
+
+Examples:
+  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY
+  node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY --title "My Server" --message "Custom notification"
+  node index.js --port 8080
+`);
+}
+
+// Check for help flag
+if (args.includes('--help') || args.includes('-h')) {
+  showHelp();
+  process.exit(0);
+}
+
 // Validate pushover configuration
 if (config.pushping && (!config.userkey || !config.apikey)) {
   console.error('Error: --pushping requires both --userkey and --apikey parameters');
+  console.error('Use --help for usage information');
   process.exit(1);
 }
 
 // Function to send pushover notification
-function sendPushoverNotification(message, title = 'Node Hello Server') {
+function sendPushoverNotification(message, title = null) {
   if (!config.pushping) return;
+
+  // Use custom message if provided, otherwise use the passed message
+  const finalMessage = config.message || message;
+  // Use custom title if provided, otherwise use the passed title or default
+  const finalTitle = title || config.title;
 
   const postData = querystring.stringify({
     token: config.apikey,
     user: config.userkey,
-    message: message,
-    title: title
+    message: finalMessage,
+    title: finalTitle
   });
 
   const options = {

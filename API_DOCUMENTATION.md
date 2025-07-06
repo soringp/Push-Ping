@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a simple Node.js HTTP server application that serves a "Hello World" message. The application is built using Node.js's built-in `http` module and is designed for testing simple deployments to the cloud.
+This is a simple Node.js HTTP server application that serves a "Hello World" message. The application is built using Node.js's built-in `http` module and is designed for testing simple deployments to the cloud. The server now includes optional Pushover notification support for monitoring server events.
 
 ## Project Structure
 
@@ -145,6 +145,71 @@ All return the same "Hello Node!" response.
 - **version**: `1.0.0` - Semantic version
 - **main**: `index.js` - Entry point
 - **scripts.start**: `node index.js` - Start command
+- **scripts.start:pushover**: `node index.js --pushping --userkey YOUR_USER_KEY --apikey YOUR_API_KEY` - Start with pushover notifications
+- **scripts.help**: `node index.js --help` - Show help message
+
+## Pushover Notifications
+
+The application supports optional Pushover notifications for monitoring server events. When enabled, the server will send notifications for:
+
+- Server startup
+- Server shutdown
+- Every 10th request (milestone notifications)
+- Uncaught exceptions
+
+### Command Line Parameters
+
+| Parameter | Description | Required | Example |
+|-----------|-------------|----------|---------|
+| `--pushping` | Enable pushover notifications | No | `--pushping` |
+| `--userkey` | Pushover user key | Yes (with --pushping) | `--userkey abcd1234` |
+| `--apikey` | Pushover application API key | Yes (with --pushping) | `--apikey efgh5678` |
+| `--title` | Custom notification title | No | `--title "My Server"` |
+| `--message` | Custom notification message | No | `--message "Custom alert"` |
+| `--port` | Server port | No | `--port 8080` |
+| `--help` | Show help message | No | `--help` |
+
+### Pushover Configuration
+
+To use Pushover notifications, you need:
+
+1. **Pushover Account**: Sign up at https://pushover.net/
+2. **User Key**: Found in your Pushover dashboard
+3. **API Token**: Create an application at https://pushover.net/apps/build
+
+### Notification Events
+
+#### Server Startup
+- **Trigger**: When the server starts successfully
+- **Default Title**: "Node Hello Server - Started"
+- **Default Message**: "Node Hello server started successfully on port {port}"
+
+#### Request Milestones
+- **Trigger**: Every 10th request
+- **Default Title**: "Node Hello Server - Request Milestone"
+- **Default Message**: "Server has received {count} requests. Latest request: {method} {url}"
+
+#### Server Shutdown
+- **Trigger**: When server receives SIGINT (Ctrl+C)
+- **Default Title**: "Node Hello Server - Shutdown"
+- **Default Message**: "Node Hello server shutting down. Total requests served: {count}"
+
+#### Error Notifications
+- **Trigger**: Uncaught exceptions
+- **Default Title**: "Node Hello Server - Error"
+- **Default Message**: "Node Hello server encountered an error: {error message}"
+
+### Custom Notifications
+
+When `--title` or `--message` parameters are provided:
+
+- **Custom Title**: Overrides the default title for all notifications
+- **Custom Message**: Overrides the default message for all notifications
+
+**Example with custom title and message**:
+```bash
+node index.js --pushping --userkey your_user_key --apikey your_api_key --title "Production Server" --message "Server event occurred"
+```
 
 ## Usage Examples
 
